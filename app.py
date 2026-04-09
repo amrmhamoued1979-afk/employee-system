@@ -2,38 +2,43 @@ import streamlit as st
 import pandas as pd
 import sqlite3
 
-# --- 1. إعدادات الصفحة وإخفاء القائمة العلوية (GitHub & Fork) ---
+# --- 1. إعدادات الصفحة وإخفاء القائمة العلوية نهائياً ---
 st.set_page_config(page_title="نظام بيانات الموظفين - الجهاز المركزي للمحاسبات", layout="wide")
 
-# إخفاء شريط الأدوات العلوي لحماية الخصوصية
+# كود لإخفاء Fork و GitHub وجميع أيقونات Streamlit العلوية
 hide_style = """
             <style>
             #MainMenu {visibility: hidden;}
             header {visibility: hidden;}
             footer {visibility: hidden;}
             .stAppDeployButton {display:none;}
+            [data-testid="stHeader"] {display:none;}
             </style>
             """
 st.markdown(hide_style, unsafe_allow_html=True)
 
-# --- 2. عرض اللوجو والعنوان (تم تحديث الرابط لضمان الظهور) ---
-# الرابط أدناه هو رابط مباشر للصورة التي أرسلتها للجهاز المركزي للمحاسبات
-st.image("https://ibb.co", use_container_width=True)
-st.markdown("<h2 style='text-align: center;'>الجهاز المركزي للمحاسبات</h2>", unsafe_allow_html=True)
+# --- 2. عرض اللوجو والعنوان (تم تعديل طريقة العرض لتكون مضمونة) ---
+# سنضع اللوجو في المنتصف مع العنوان بشكل احترافي
+col1, col2, col3 = st.columns([1,2,1])
+with col2:
+    # رابط الصورة المباشر
+    st.image("https://ibb.co", use_container_width=True)
+    st.markdown("<h2 style='text-align: center; color: #1E3A8A;'>الجهاز المركزي للمحاسبات</h2>", unsafe_allow_html=True)
+
 st.divider()
 
 # --- 3. قاعدة البيانات ---
-conn = sqlite3.connect('main_database_v8.db', check_same_thread=False)
+conn = sqlite3.connect('main_database_v9.db', check_same_thread=False)
 c = conn.cursor()
 c.execute('''CREATE TABLE IF NOT EXISTS employees 
              (emp_id TEXT PRIMARY KEY, name TEXT, phone TEXT, province TEXT, 
               center_dept TEXT, branch TEXT, inspection TEXT, password TEXT)''')
 conn.commit()
 
-# --- 4. القائمة الجانبية والأمان المتقدم ---
+# --- 4. القائمة الجانبية والأمان ---
 st.sidebar.title("🔐 بوابة النظام")
 
-# خانة سرية لإظهار لوحة التحكم
+# خانة سرية لإظهار لوحة التحكم (كلمة السر: admin79)
 admin_access = st.sidebar.text_input("كلمة سر الإدارة (لإظهار اللوحة)", type="password")
 
 if admin_access == "admin79":
@@ -47,16 +52,16 @@ choice = st.sidebar.selectbox("اختر الإجراء:", menu)
 
 # القسم الأول: تسجيل البيانات (الافتراضي)
 if choice == "تسجيل بياناتي (لأول مرة)":
-    st.header("📝 تسجيل حساب جديد")
+    st.markdown("<h3 style='text-align: center;'>📝 تسجيل حساب جديد</h3>", unsafe_allow_html=True)
     st.warning("يجب ملء كافة البيانات المطلوبة لإتمام عملية الحفظ")
     with st.form("reg_form"):
-        col1, col2 = st.columns(2)
-        with col1:
+        c1, c2 = st.columns(2)
+        with c1:
             r_id = st.text_input("رقم الموظف")
             r_name = st.text_input("الاسم بالكامل")
             r_phone = st.text_input("رقم التليفون")
             r_pw = st.text_input("اختر كلمة سر خاصة بك", type="password")
-        with col2:
+        with c2:
             r_prov = st.text_input("المحافظة")
             r_dept = st.text_input("الإدارة المركزية")
             r_branch = st.selectbox("الفرع", ["الأول", "الثاني"])
@@ -107,7 +112,7 @@ elif choice == "تعديل بياناتي (دخول الموظف)":
                 conn.commit()
                 st.success("تم التحديث بنجاح.")
 
-# القسم الرابع: لوحة التحكم (مخفية)
+# القسم الرابع: لوحة التحكم (تظهر بكلمة سر admin79)
 elif choice == "لوحة تحكم المسؤول (أنا فقط)":
     st.header("🛠 لوحة الإدارة العليا")
     all_df = pd.read_sql_query("SELECT * FROM employees", conn)
