@@ -5,14 +5,13 @@ import sqlite3
 # --- 1. إعدادات الصفحة ---
 st.set_page_config(page_title="نظام بيانات الموظفين - الجهاز المركزي للمحاسبات", layout="wide")
 
-# --- 2. عرض اللوجو في أعلى الصفحة ---
-# رابط الصورة المباشر لضمان ظهورها بشكل سليم
+# --- 2. عرض اللوجو والعنوان (تم تعديل هذا الجزء لحل الخطأ) ---
 st.image("https://ibb.co", use_container_width=True)
-st.markdown("<h3 style='text-align: center;'>الجهاز المركزي للمحاسبات</h3>", unsafe_locally_executable=True, unsafe_allow_html=True)
-st.markdown("---")
+st.markdown("<h2 style='text-align: center;'>الجهاز المركزي للمحاسبات</h2>", unsafe_allow_html=True)
+st.divider()
 
 # --- 3. قاعدة البيانات ---
-conn = sqlite3.connect('main_database_v5.db', check_same_thread=False)
+conn = sqlite3.connect('main_database_v6.db', check_same_thread=False)
 c = conn.cursor()
 c.execute('''CREATE TABLE IF NOT EXISTS employees 
              (emp_id TEXT PRIMARY KEY, name TEXT, phone TEXT, province TEXT, 
@@ -27,7 +26,6 @@ choice = st.sidebar.selectbox("اختر الإجراء:", menu)
 # --- القسم الأول: الاستعلام العام (مع إظهار رقم التليفون) ---
 if choice == "الاستعلام العام":
     st.header("🔍 استعلام جهات الفحص")
-    # تم تعديل الاستعلام هنا ليشمل رقم التليفون كما طلبت
     df = pd.read_sql_query("SELECT name as 'الاسم', phone as 'رقم التليفون', province as 'المحافظة', inspection as 'جهة الفحص' FROM employees", conn)
     if not df.empty:
         st.dataframe(df, use_container_width=True)
@@ -52,7 +50,6 @@ elif choice == "تسجيل بياناتي (لأول مرة)":
             r_insp = st.text_input("جهة الفحص")
         
         if st.form_submit_button("إرسال وحفظ البيانات"):
-            # شرط التأكد من ملء كل الخانات
             if all([r_id, r_name, r_phone, r_pw, r_prov, r_dept, r_insp]):
                 try:
                     c.execute("INSERT INTO employees VALUES (?,?,?,?,?,?,?,?)", 
@@ -93,21 +90,17 @@ elif choice == "تعديل بياناتي (دخول الموظف)":
                 else:
                     st.error("يرجى ملء الخانات.")
 
-# --- القسم الرابع: لوحة تحكم المسؤول (محمية تماماً) ---
+# --- القسم الرابع: لوحة تحكم المسؤول ---
 elif choice == "لوحة تحكم المسؤول (أنا فقط)":
     st.header("🛠 لوحة الإدارة العليا")
     admin_pw = st.sidebar.text_input("كلمة سر المسؤول", type="password")
     if admin_pw == "admin79":
-        st.write("إدارة قاعدة البيانات الشاملة:")
         all_df = pd.read_sql_query("SELECT * FROM employees", conn)
         st.dataframe(all_df)
-        
-        st.markdown("---")
         del_id = st.text_input("أدخل رقم الموظف المراد حذفه نهائياً")
         if st.button("حذف السجل"):
             c.execute("DELETE FROM employees WHERE emp_id=?", (del_id,))
             conn.commit()
-            st.success(f"تم حذف الموظف رقم {del_id}")
             st.rerun()
     else:
         st.error("عذراً، هذا القسم محمي للمسؤول فقط.")
