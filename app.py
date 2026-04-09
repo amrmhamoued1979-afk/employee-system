@@ -2,8 +2,19 @@ import streamlit as st
 import pandas as pd
 import sqlite3
 
-# --- 1. إعدادات الصفحة ---
+# --- 1. إعدادات الصفحة وإخفاء القائمة العلوية (GitHub & Fork) ---
 st.set_page_config(page_title="نظام بيانات الموظفين - الجهاز المركزي للمحاسبات", layout="wide")
+
+# هذا الجزء هو المسؤول عن إخفاء القائمة العلوية نهائياً
+hide_streamlit_style = """
+            <style>
+            #MainMenu {visibility: hidden;}
+            header {visibility: hidden;}
+            footer {visibility: hidden;}
+            .stAppDeployButton {display:none;}
+            </style>
+            """
+st.markdown(hide_streamlit_style, unsafe_allow_html=True)
 
 # --- 2. عرض اللوجو والعنوان ---
 st.image("https://ibb.co", use_container_width=True)
@@ -24,17 +35,14 @@ st.sidebar.title("🔐 بوابة النظام")
 # خانة سرية لإظهار لوحة التحكم (مخفية عن الموظفين)
 admin_access = st.sidebar.text_input("كلمة سر الإدارة (لإظهار اللوحة)", type="password")
 
-# تحديد الخيارات المتاحة بناءً على كلمة السر
 if admin_access == "admin79":
-    # إذا كانت كلمة السر صحيحة، تظهر لوحة التحكم كخيار رابع
     menu = ["تسجيل بياناتي (لأول مرة)", "الاستعلام العام", "تعديل بياناتي (دخول الموظف)", "لوحة تحكم المسؤول (أنا فقط)"]
 else:
-    # الموظف العادي يرى 3 خيارات فقط، ولوحة التحكم مخفية تماماً
     menu = ["تسجيل بياناتي (لأول مرة)", "الاستعلام العام", "تعديل بياناتي (دخول الموظف)"]
 
 choice = st.sidebar.selectbox("اختر الإجراء:", menu)
 
-# --- القسم الأول: تسجيل بياناتي (أصبح الاختيار الأول الآن) ---
+# --- تنفيذ الأقسام (نفس الكود السابق مع بقاء لوحة التحكم مخفية) ---
 if choice == "تسجيل بياناتي (لأول مرة)":
     st.header("📝 تسجيل حساب جديد")
     st.warning("يجب ملء كافة البيانات المطلوبة لإتمام عملية الحفظ")
@@ -63,7 +71,6 @@ if choice == "تسجيل بياناتي (لأول مرة)":
             else:
                 st.error("🛑 خطأ: يرجى ملء كافة الخانات المطلوبة قبل الحفظ.")
 
-# --- القسم الثاني: الاستعلام العام ---
 elif choice == "الاستعلام العام":
     st.header("🔍 استعلام جهات الفحص")
     df = pd.read_sql_query("SELECT name as 'الاسم', phone as 'رقم التليفون', province as 'المحافظة', inspection as 'جهة الفحص' FROM employees", conn)
@@ -72,12 +79,10 @@ elif choice == "الاستعلام العام":
     else:
         st.info("لا توجد بيانات مسجلة حالياً.")
 
-# --- القسم الثالث: تعديل الموظف لبياناته ---
 elif choice == "تعديل بياناتي (دخول الموظف)":
     st.header("🔑 دخول الموظف للتعديل")
     l_id = st.text_input("أدخل رقم الموظف")
     l_pw = st.text_input("أدخل كلمة السر", type="password")
-    
     if st.button("دخول"):
         user = c.execute("SELECT * FROM employees WHERE emp_id=? AND password=?", (l_id, l_pw)).fetchone()
         if user:
@@ -97,12 +102,11 @@ elif choice == "تعديل بياناتي (دخول الموظف)":
                 conn.commit()
                 st.success("تم التحديث بنجاح.")
 
-# --- القسم الرابع: لوحة التحكم (تظهر لك فقط عند كتابة السر في الجانب) ---
 elif choice == "لوحة تحكم المسؤول (أنا فقط)":
     st.header("🛠 لوحة الإدارة العليا")
     all_df = pd.read_sql_query("SELECT * FROM employees", conn)
     st.dataframe(all_df)
-    del_id = st.text_input("أدخل رقم الموظف المراد حذفه نهائياً")
+    del_id = st.text_input("أدخل رقم الموظف للحذف")
     if st.button("حذف السجل"):
         c.execute("DELETE FROM employees WHERE emp_id=?", (del_id,))
         conn.commit()
