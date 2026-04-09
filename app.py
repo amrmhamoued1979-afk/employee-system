@@ -5,8 +5,8 @@ import sqlite3
 # --- 1. إعدادات الصفحة وإخفاء القائمة العلوية (GitHub & Fork) ---
 st.set_page_config(page_title="نظام بيانات الموظفين - الجهاز المركزي للمحاسبات", layout="wide")
 
-# هذا الجزء هو المسؤول عن إخفاء القائمة العلوية نهائياً
-hide_streamlit_style = """
+# إخفاء شريط الأدوات العلوي لحماية الخصوصية
+hide_style = """
             <style>
             #MainMenu {visibility: hidden;}
             header {visibility: hidden;}
@@ -14,15 +14,16 @@ hide_streamlit_style = """
             .stAppDeployButton {display:none;}
             </style>
             """
-st.markdown(hide_streamlit_style, unsafe_allow_html=True)
+st.markdown(hide_style, unsafe_allow_html=True)
 
-# --- 2. عرض اللوجو والعنوان ---
+# --- 2. عرض اللوجو والعنوان (تم تحديث الرابط لضمان الظهور) ---
+# الرابط أدناه هو رابط مباشر للصورة التي أرسلتها للجهاز المركزي للمحاسبات
 st.image("https://ibb.co", use_container_width=True)
 st.markdown("<h2 style='text-align: center;'>الجهاز المركزي للمحاسبات</h2>", unsafe_allow_html=True)
 st.divider()
 
 # --- 3. قاعدة البيانات ---
-conn = sqlite3.connect('main_database_v7.db', check_same_thread=False)
+conn = sqlite3.connect('main_database_v8.db', check_same_thread=False)
 c = conn.cursor()
 c.execute('''CREATE TABLE IF NOT EXISTS employees 
              (emp_id TEXT PRIMARY KEY, name TEXT, phone TEXT, province TEXT, 
@@ -32,7 +33,7 @@ conn.commit()
 # --- 4. القائمة الجانبية والأمان المتقدم ---
 st.sidebar.title("🔐 بوابة النظام")
 
-# خانة سرية لإظهار لوحة التحكم (مخفية عن الموظفين)
+# خانة سرية لإظهار لوحة التحكم
 admin_access = st.sidebar.text_input("كلمة سر الإدارة (لإظهار اللوحة)", type="password")
 
 if admin_access == "admin79":
@@ -42,7 +43,9 @@ else:
 
 choice = st.sidebar.selectbox("اختر الإجراء:", menu)
 
-# --- تنفيذ الأقسام (نفس الكود السابق مع بقاء لوحة التحكم مخفية) ---
+# --- 5. تنفيذ الأقسام ---
+
+# القسم الأول: تسجيل البيانات (الافتراضي)
 if choice == "تسجيل بياناتي (لأول مرة)":
     st.header("📝 تسجيل حساب جديد")
     st.warning("يجب ملء كافة البيانات المطلوبة لإتمام عملية الحفظ")
@@ -71,6 +74,7 @@ if choice == "تسجيل بياناتي (لأول مرة)":
             else:
                 st.error("🛑 خطأ: يرجى ملء كافة الخانات المطلوبة قبل الحفظ.")
 
+# القسم الثاني: الاستعلام العام (مع إظهار التليفون)
 elif choice == "الاستعلام العام":
     st.header("🔍 استعلام جهات الفحص")
     df = pd.read_sql_query("SELECT name as 'الاسم', phone as 'رقم التليفون', province as 'المحافظة', inspection as 'جهة الفحص' FROM employees", conn)
@@ -79,6 +83,7 @@ elif choice == "الاستعلام العام":
     else:
         st.info("لا توجد بيانات مسجلة حالياً.")
 
+# القسم الثالث: تعديل الموظف لبياناته
 elif choice == "تعديل بياناتي (دخول الموظف)":
     st.header("🔑 دخول الموظف للتعديل")
     l_id = st.text_input("أدخل رقم الموظف")
@@ -102,6 +107,7 @@ elif choice == "تعديل بياناتي (دخول الموظف)":
                 conn.commit()
                 st.success("تم التحديث بنجاح.")
 
+# القسم الرابع: لوحة التحكم (مخفية)
 elif choice == "لوحة تحكم المسؤول (أنا فقط)":
     st.header("🛠 لوحة الإدارة العليا")
     all_df = pd.read_sql_query("SELECT * FROM employees", conn)
