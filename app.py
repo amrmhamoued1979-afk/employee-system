@@ -2,69 +2,79 @@ import streamlit as st
 import pandas as pd
 import sqlite3
 
-st.set_page_config(page_title="نظام الموظفين", layout="wide")
+# 1. إعدادات الصفحة
+st.set_page_config(page_title="نظام الإدارة الآمن", layout="wide")
 
-# الاتصال بقاعدة البيانات
+# 2. الاتصال بقاعدة البيانات
 conn = sqlite3.connect('my_data.db', check_same_thread=False)
 c = conn.cursor()
 c.execute('''CREATE TABLE IF NOT EXISTS emp_table 
              (id TEXT PRIMARY KEY, name TEXT, phone TEXT, province TEXT, 
-              center TEXT, branch TEXT, inspection TEXT, password TEXT)''')
+              center TEXT, branch TEXT, inspection TEXT, password TEXT, status TEXT)''')
 conn.commit()
 
 # --- القائمة الجانبية ---
-st.sidebar.title("القائمة الرئيسية")
-mode = st.sidebar.radio("اختر الإجراء:", ["دخول الموظف (تعديل)", "تسجيل موظف جديد (للمسؤول)", "استعلام عام (جهات الفحص)"])
+st.sidebar.title("🔐 بوابة النظام")
+choice = st.sidebar.radio("انتقل إلى:", ["الاستعلام العام", "إرسال بيانات موظف", "لوحة تحكم المسؤول فقط"])
 
-if mode == "تسجيل موظف جديد (للمسؤول)":
-    st.header("📝 إضافة موظف جديد للقاعدة")
-    with st.form("reg_form"):
+# --- القسم الأول: الاستعلام العام (للكل) ---
+if choice == "الاستعلام العام":
+    st.header("🔍 استعلام جهات الفحص")
+    df = pd.read_sql_query("SELECT name, province, inspection FROM emp_table WHERE status='مقبول'", conn)
+    if not df.empty:
+        st.table(df)
+    else:
+        st.info("لا توجد بيانات معتمدة حالياً.")
+
+# --- القسم الثاني: إرسال البيانات (الموظف يدخل بياناته لكن لا تعدل فوراً) ---
+elif choice == "إرسال بيانات موظف":
+    st.header("📝 إدخال بيانات جديدة")
+    st.info("ملاحظة: البيانات لن تظهر في النظام إلا بعد مراجعة المسؤول واعتمادها.")
+    with st.form("entry_form"):
         col1, col2 = st.columns(2)
         with col1:
-            new_id = st.text_input("رقم الموظف (كود الدخول)")
-            new_name = st.text_input("الاسم الكامل")
-            new_phone = st.text_input("رقم التليفون")
-            new_pw = st.text_input("كلمة السر", type="password")
+            e_id = st.text_input("رقم الموظف")
+            e_name = st.text_input("الاسم")
+            e_phone = st.text_input("التليفون")
         with col2:
-            new_prov = st.text_input("المحافظة")
-            new_center = st.text_input("الإدارة المركزية")
-            new_branch = st.selectbox("الفرع", ["الأول", "الثاني"])
-            new_insp = st.text_input("جهة الفحص")
+            e_prov = st.text_input("المحافظة")
+            e_insp = st.text_input("جهة الفحص")
         
-        if st.form_submit_button("حفظ الموظف"):
+        if st.form_submit_button("إرسال للمراجعة"):
             try:
-                c.execute("INSERT INTO emp_table VALUES (?,?,?,?,?,?,?,?)", 
-                          (new_id, new_name, new_phone, new_prov, new_center, new_branch, new_insp, new_pw))
+                c.execute("INSERT INTO emp_table VALUES (?,?,?,?,?,?,?,?,?)", 
+                          (e_id, e_name, e_phone, e_prov, "", "", e_insp, "", "قيد الانتظار"))
                 conn.commit()
-                st.success("تم تسجيل الموظف بنجاح! يمكنه الدخول الآن.")
+                st.success("تم إرسال بياناتك بنجاح، بانتظار اعتماد المسؤول.")
             except:
-                st.error("رقم الموظف موجود مسبقاً!")
+                st.error("هذا الرقم مسجل مسبقاً، يرجى مراجعة الإدارة للتعديل.")
 
-elif mode == "دخول الموظف (تعديل)":
-    st.header("🔑 تسجيل دخول الموظف")
-    user_id = st.text_input("أدخل رقم الموظف")
-    user_pw = st.text_input("أدخل الرقم السري", type="password")
+# --- القسم الثالث: لوحة تحكم المسؤول (أنت فقط) ---
+elif choice == "لوحة تحكم المسؤول فقط":
+    st.header("🛠 لوحة الإدارة والتحكم")
+    password = st.sidebar.text_input("أدخل كلمة سر الإدارة", type="password")
     
-    if st.button("دخول"):
-        res = c.execute("SELECT * FROM emp_table WHERE id=? AND password=?", (user_id, user_pw)).fetchone()
-        if res:
-            st.session_state['logged_in'] = res
-            st.success(f"مرحباً بك: {res[1]}")
-        else:
-            st.error("بيانات الدخول غير صحيحة.")
+    # ضع كلمة سرك الخاصة هنا (بدلاً من 1234)
+    if password == "admin79": 
+        st.write("### إدارة الطلبات والموافقة")
+        pending = pd.read_sql_query("SELECT * FROM emp_table WHERE status='قيد الانتظار'", conn)
+        
+        if not pending.empty:
+            st.dataframe(pending)
+            user_to_mod = st.selectbox("اختر رقم الموظف لاعتماده أو تعديله:", pending['id'])
             
-    if 'logged_in' in st.session_state:
-        res = st.session_state['logged_in']
-        with st.form("edit_form"):
-            st.info("يمكنك تعديل بياناتك أدناه:")
-            u_phone = st.text_input("التليفون", value=res[2])
-            u_insp = st.text_input("جهة الفحص", value=res[6])
-            if st.form_submit_button("تحديث بياناتي"):
-                c.execute("UPDATE emp_table SET phone=?, inspection=? WHERE id=?", (u_phone, u_insp, res[0]))
+            if st.button("✅ اعتماد البيانات وظهورها للجميع"):
+                c.execute("UPDATE emp_table SET status='مقبول' WHERE id=?", (user_to_mod,))
                 conn.commit()
-                st.success("تم التحديث! يرجى إعادة الدخول لرؤية التغييرات.")
-
-elif mode == "استعلام عام (جهات الفحص)":
-    st.header("🔍 استعلام عام عن جهات الفحص")
-    df = pd.read_sql_query("SELECT name as 'الاسم', province as 'المحافظة', inspection as 'جهة الفحص' FROM emp_table", conn)
-    st.dataframe(df, use_container_width=True)
+                st.success(f"تم اعتماد بيانات الموظف {user_to_mod}")
+                st.rerun()
+                
+            if st.button("❌ حذف الطلب"):
+                c.execute("DELETE FROM emp_table WHERE id=?", (user_to_mod,))
+                conn.commit()
+                st.warning("تم حذف الطلب.")
+                st.rerun()
+        else:
+            st.info("لا توجد طلبات جديدة للمراجعة.")
+    else:
+        st.error("هذا القسم محمي، يرجى إدخال كلمة السر الصحيحة في القائمة الجانبية.")
