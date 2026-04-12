@@ -23,7 +23,7 @@ conn = st.connection("gsheets", type=GSheetsConnection)
 def save_data(data_dict):
     try:
         # قراءة البيانات الحالية (مع تجاهل التخزين المؤقت لضمان التحديث اللحظي)
-        existing_data = conn.read(worksheet="الورقة1", ttl=0)
+        existing_data = conn.read(worksheet="Sheet1", ttl=0)
         existing_data = existing_data.dropna(how="all")
         
         # تحويل البيانات الجديدة لـ DataFrame
@@ -31,7 +31,7 @@ def save_data(data_dict):
         
         # دمج البيانات وتحديث الملف
         updated_df = pd.concat([existing_data, new_row], ignore_index=True)
-        conn.update(worksheet="الورقة1", data=updated_df)
+        conn.update(worksheet="Sheet1", data=updated_df)
         return True
     except Exception as e:
         st.error(f"خطأ تقني في الاتصال بالسحابة: {e}")
